@@ -1,9 +1,26 @@
 grammar Grammar
   rule commandset
-    command+
+    command*
   end
 
   rule command
-    [^\n]+ "\n"
+    commandname spaces command_detail* comment* "\n"
+    # &{ |c| binding.pry; true }
+  end
+
+  rule commandname
+    [^ ]+
+  end
+
+  rule spaces
+    [ ]+
+  end
+
+  rule command_detail
+    [^#\n]+
+  end
+
+  rule comment
+    "#" [^\n]*
   end
 end
