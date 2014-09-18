@@ -1,9 +1,9 @@
 grammar Grammar
   rule commandset
-    command*
+    command+
   end
 
   rule command
-    .*
+    [^\n]+ "\n"
   end
 end
