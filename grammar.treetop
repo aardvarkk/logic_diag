@@ -1,5 +1,9 @@
 grammar Grammar
-  rule characters
+  rule commandset
+    command*
+  end
+
+  rule command
     .*
   end
 end
