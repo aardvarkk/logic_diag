@@ -1,10 +1,13 @@
+# Notes:
+# "\n" != '\n'
+
 grammar Grammar
   rule commandset
     command*
   end
 
   rule command
-    commandname spaces command_detail* comment* "\n"
+    commandname spaces* command_detail* "#"* [^\n]* "\n"
     # &{ |c| binding.pry; true }
   end
 
@@ -17,10 +20,19 @@ grammar Grammar
   end
 
   rule command_detail
+    assignment / logic
+  end
+
+  rule assignment
+    variable [ ]* ":=" [ ]* logic
+  end
+
+  rule variable
+    [^ ]+
+  end
+
+  rule logic
     [^#\n]+
   end
 
-  rule comment
-    "#" [^\n]*
-  end
 end

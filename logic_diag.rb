@@ -13,4 +13,5 @@ TMB1A              IN308 AND PSV53 OR RB01 #PT KEY OUT. KEY INCLUDES ALL TERM OF
 
 Treetop.load 'grammar'
 parser = GrammarParser.new
-p parser.parse(text)
+parsed = parser.parse(text)
+p parsed.nil? ? parser.failure_reason : parsed
