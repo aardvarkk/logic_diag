@@ -4,7 +4,7 @@ grammar Grammar
   end
 
   rule command
-    identifier command_detail? comment_to_eol? "\n"
+    identifier ws+ command_detail? comment_to_eol? "\n"
   end
 
   rule command_detail
@@ -12,47 +12,27 @@ grammar Grammar
   end
 
   rule assign_expr
-    identifier ":=" expr
+    identifier ws* ":=" ws* expr
   end
 
   rule expr
-    or_expr | gtor_expr
+    or_expr | and_expr
   end
 
   rule or_expr
-    gtor_expr "OR" expr
-  end
-
-  rule gtor_expr
-    and_expr | gtand_expr
+    and_expr ws+ "OR" ws+ and_expr
   end
 
   rule and_expr
-    gtand_expr "AND" gtor_expr
-  end
-
-  rule gtand_expr
-    not_expr | gtnot_expr
-  end
-
-  rule not_expr
-    "NOT" gtnot_expr | gtand_expr
-  end
-
-  rule gtnot_expr
-    parens_expr | identifier
-  end
-
-  rule parens_expr
-    "(" expr ")"
+    [^ #\n]+
   end
 
   rule identifier
-    [a-zA-Z0-9]+ ws+
+    [a-zA-Z0-9]+
   end
 
   rule comment_to_eol
-    "#" [^\n]*
+    ws* "#" [^\n]*
   end
 
   rule ws
