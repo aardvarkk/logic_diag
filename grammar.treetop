@@ -16,35 +16,7 @@ grammar Grammar
   end
 
   rule expr
-    or_expr / gtor_expr
-  end
-
-  rule or_expr
-    gtor_expr "OR" ws+ expr
-  end
-
-  rule gtor_expr
-    and_expr / gtand_expr
-  end
-
-  rule and_expr
-    gtand_expr "AND" ws+ gtor_expr
-  end
-
-  rule gtand_expr
-    not_expr / gtnot_expr
-  end
-
-  rule not_expr
-    "NOT" ws+ gtnot_expr / gtand_expr
-  end
-
-  rule gtnot_expr
-    parens_expr / identifier
-  end
-
-  rule parens_expr
-    "(" expr ")"
+    [^#\n]*
   end
 
   rule identifier
