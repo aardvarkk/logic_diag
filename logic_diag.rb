@@ -1,9 +1,9 @@
-require 'citrus'
+require 'treetop'
 
 # NOTE: Text must end in a newline character!
 text = File.read('test.txt')
 
-Citrus.load 'grammar'
+Treetop.load 'grammar'
 
-parsed = Grammar.parse(text)
+parsed = GrammarParser.new.parse text
 p parsed.dump
