@@ -4,27 +4,31 @@ grammar Grammar
   end
 
   rule command
-    identifier assign_expr* comment_to_eol* "\n"
+    identifier (assign_expr | expr)* comment_to_eol* "\n"
   end
 
   rule assign_expr
-    identifier ":=" or_expr | or_expr
+    identifier ":=" expr
+  end
+
+  rule expr
+    or_expr | and_expr
   end
 
   rule or_expr
-    and_expr "OR" and_expr | and_expr
+    and_expr "OR" expr
   end
 
   rule and_expr
-    not_expr "AND" not_expr | not_expr
+    not_expr "AND" or_expr
   end
 
   rule not_expr
-    "NOT" parens_expr | parens_expr
+    "NOT" parens_expr | and_expr
   end
 
   rule parens_expr
-    "(" parens_expr ")" | identifier
+    "(" expr ")" | identifier
   end
 
   rule identifier
