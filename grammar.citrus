@@ -1,0 +1,41 @@
+grammar Grammar
+  rule commandset
+    command*
+  end
+
+  rule command
+    identifier assign_expr* comment_to_eol* "\n"
+  end
+
+  rule assign_expr
+    identifier ":=" parens_expr | parens_expr
+  end
+
+  rule parens_expr
+    "(" parens_expr ")" | not_expr
+  end
+
+  rule not_expr
+    "NOT" and_expr | and_expr
+  end
+
+  rule and_expr
+    or_expr "AND" or_expr | or_expr
+  end
+
+  rule or_expr
+    identifier "OR"  identifier | identifier | ws
+  end
+
+  rule identifier
+    ws* [a-zA-Z0-9]+ ws*
+  end
+
+  rule ws
+    [ ]+
+  end
+
+  rule comment_to_eol
+    "#" [^\n]*
+  end
+end

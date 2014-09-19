@@ -1,2 +1,3 @@
-gem 'pry'
-gem 'treetop'
+source 'https://rubygems.org'
+
+gem 'citrus'
