@@ -8,23 +8,23 @@ grammar Grammar
   end
 
   rule assign_expr
-    identifier ":=" parens_expr | parens_expr
-  end
-
-  rule parens_expr
-    "(" parens_expr ")" | not_expr
-  end
-
-  rule not_expr
-    "NOT" and_expr | and_expr
-  end
-
-  rule and_expr
-    or_expr "AND" or_expr | or_expr
+    identifier ":=" or_expr | or_expr
   end
 
   rule or_expr
-    identifier "OR"  identifier | identifier | ws
+    and_expr "OR" and_expr | and_expr
+  end
+
+  rule and_expr
+    not_expr "AND" not_expr | not_expr
+  end
+
+  rule not_expr
+    "NOT" parens_expr | parens_expr
+  end
+
+  rule parens_expr
+    "(" parens_expr ")" | identifier
   end
 
   rule identifier
