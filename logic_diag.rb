@@ -2,13 +2,15 @@ require 'citrus'
 require 'treetop'
 
 # NOTE: Text must end in a newline character!
-# text = File.read('test.txt')
-# Citrus.load 'grammar'
-# parsed = Grammar.parse text
+text = File.read('test.txt')
+Citrus.load 'grammar'
+parsed = Grammar.parse text
 
 # Citrus 
-Citrus.load 'calc'
-parsed = Calc.parse '0 + +5 * (3 + (8*7)**9)'
+# Citrus.load 'calc'
+# parsed = Calc.parse '(-0  + +5) * (3 + (8*7)**9) / 50 + 3'
+# parsed = Calc.parse '5*4*3'
+
 p parsed.dump
 
 # Treetop
