@@ -1,6 +1,7 @@
 require 'awesome_print'
 require 'citrus'
 require 'parslet'
+require 'pp'
 require 'treetop'
 
 text = File.read('test.txt')
@@ -59,4 +60,4 @@ begin
 rescue Parslet::ParseFailed => error
   puts error.cause.ascii_tree
 end
-ap parsed
+pp parsed
