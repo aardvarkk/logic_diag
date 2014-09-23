@@ -22,14 +22,50 @@ text = File.read('test.txt')
 # parsed = GrammarParser.new.parse text
 # p parsed
 
+# x1 = x coord of top input terminal
+# y1 = y coord of of top input terminal
+# y2 = y coord of bottom input terminal
+# x2 = x coord of output terminal
+# return an SVG string corresponding to an OR gate at the given location
+def or_gate(x1,y1,y2,x2)
+  d = y2 - y1
+  h = 2 * d
+  %{<line x1="#{x1}" x2="#{x1}" y1="#{y1-d}" y2="#{y2+d}" stroke="black"/>}
+end
+
+def make_svg(filename)
+  # Calculate total required dimensions before making the SVG
+  w = 500
+  h = 500
+  File.open(filename, 'w') do |f|
+    f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
+    f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
+    f.puts or_gate(50,50,100,100)
+    f.puts %{</svg>}
+  end
+end
+
+# class TestGrammar < Parslet::Parser
+#   rule(:newline) {
+#     match('\n')
+#   }
+#   rule(:foo) {
+#     str('foo') >> newline
+#   }
+#   root(:foo)
+# end
+
+# pp TestGrammar.new.parse text
+
 # Parslet
 class LogicGrammar < Parslet::Parser
   rule(:ws) {
-    match('\\s')
+    # DO NOT use \s for a space -- it seemingly includes newlines!
+    str(' ')
   }
 
   rule(:newline) {
-    match('\\n') 
+    match('\n') 
   }
   
   rule(:identifier) {
@@ -37,11 +73,10 @@ class LogicGrammar < Parslet::Parser
   }
   
   rule(:comment) { 
-    ws.repeat >>
     (
-      match('#') >>
-      match('[^\\n]').repeat 
-    ).as(:comment)
+      str('#') >>
+      match('[^\n]').repeat 
+    )#.as(:comment)
   }
 
   rule(:group_expr) {
@@ -102,26 +137,15 @@ class LogicGrammar < Parslet::Parser
     assignment | expr
   }
 
-  rule(:command_and_comment) {
-    command_detail >> comment
-  }
-
-  rule(:command_only) {
-    command_detail
-  }
-
-  rule(:comment_only) {
-    comment
-  }
-
   rule(:command) { 
     identifier.as(:id) >> 
     ws.repeat(1) >>
-    (comment_only | command_and_comment | command_only)
+    command_detail.maybe >>
+    comment.maybe
   }
 
   rule(:commandset) { 
-    (command >> (newline | any.absent?)).repeat
+    (command >> newline).repeat
   }
 
   root(:commandset)
@@ -130,30 +154,32 @@ end
 parser = LogicGrammar.new
 
 # TESTS!
-# parsed = parser.identifier.parse('abc123')
-# parsed = parser.expr.parse('  abc123 ')
-# parsed = parser.group_expr.parse('( abc123 )')
-# parsed = parser.or_expr.parse('a OR b')
-# parsed = parser.or_expr.parse('a OR b AND c')
-# parsed = parser.or_expr.parse('a AND b')
-# parsed = parser.and_expr.parse('(a AND b)')
-# parsed = parser.expr.parse('(a OR b) AND c')
-# parsed = parser.group_expr.parse('(a OR b)')
-# parsed = parser.not_expr.parse('NOT a')
-# parsed = parser.not_expr.parse('NOT (a)')
-# parsed = parser.expr.parse('a OR b')
-# parsed = parser.expr.parse('NOT a OR b')
-# parsed = parser.expr.parse('NOT (a OR b)')
-# parsed = parser.expr.parse('BFTRIP1 OR BFTRIP2 OR PCT15Q OR PCT14Q OR ASV042 OR M4PT OR 51S1T OR 51S2T OR IN303 OR IN304 ')
-# parsed = parser.expr.parse('IN204 AND (M1P OR M2P AND COMPRM) OR IN206 AND 3PT OR IN207 AND NOT SPO AND SPLSHT AND 3PT ')
-# parsed = parser.expr.parse('PSV01 OR RMB6A ')
-# parsed = parser.expr.parse('NOT (SPO OR SPT)')
-# parsed = parser.assignment.parse('PSV63 := NOT (SPO OR SPT)')
-# parsed = parser.command.parse('PROTSEL1  # <<<<<<< LINE INTENTIONALLY LEFT BLANK >>>>>>>')
-# parsed = parser.command.parse('PROTSEL2 PSV01 := BFTRIP1')
-# parsed = parser.command_only.parse('PSV01 := BFTRIP1')
-# parsed = parser.command_and_comment.parse('PSV01 := BFTRIP1 OR BFTRIP2 OR PCT15Q OR PCT14Q OR ASV042 OR M4PT OR 51S1T OR 51S2T OR IN303 OR IN304 #GENERAL TRIP, KEY 3 PH NON-RECLOSEABLE DTT. PCT14Q/PCT15Q ARE O/V PTN,  ASV042 IS OPEN POLE PTN, 51S1T AND 51S2T ARE CH. INDEP. GND O/C, M4PT IS TIME DELAYED CH. INDEP. PTN, IN303 IS 5RX4 PN, IN304 IS 5RX4 ISOL.')
-# parsed = parser.command.parse('PROTSEL2  PSV01 := BFTRIP1 OR BFTRIP2 OR PCT15Q OR PCT14Q OR ASV042 OR M4PT OR 51S1T OR 51S2T OR IN303 OR IN304 #GENERAL TRIP, KEY 3 PH NON-RECLOSEABLE DTT. PCT14Q/PCT15Q ARE O/V PTN,  ASV042 IS OPEN POLE PTN, 51S1T AND 51S2T ARE CH. INDEP. GND O/C, M4PT IS TIME DELAYED CH. INDEP. PTN, IN303 IS 5RX4 PN, IN304 IS 5RX4 ISOL.')
+  # parsed = parser.identifier.parse('abc123')
+  # parsed = parser.expr.parse('  abc123 ')
+  # parsed = parser.group_expr.parse('( abc123 )')
+  # parsed = parser.or_expr.parse('a OR b')
+  # parsed = parser.or_expr.parse('a OR b AND c')
+  # parsed = parser.or_expr.parse('a AND b')
+  # parsed = parser.and_expr.parse('(a AND b)')
+  # parsed = parser.expr.parse('(a OR b) AND c')
+  # parsed = parser.group_expr.parse('(a OR b)')
+  # parsed = parser.not_expr.parse('NOT a')
+  # parsed = parser.not_expr.parse('NOT (a)')
+  # parsed = parser.expr.parse('a OR b')
+  # parsed = parser.expr.parse('NOT a OR b')
+  # parsed = parser.expr.parse('NOT (a OR b)')
+  # parsed = parser.expr.parse('BFTRIP1 OR BFTRIP2 OR PCT15Q OR PCT14Q OR ASV042 OR M4PT OR 51S1T OR 51S2T OR IN303 OR IN304 ')
+  # parsed = parser.expr.parse('IN204 AND (M1P OR M2P AND COMPRM) OR IN206 AND 3PT OR IN207 AND NOT SPO AND SPLSHT AND 3PT ')
+  # parsed = parser.expr.parse('PSV01 OR RMB6A ')
+  # parsed = parser.expr.parse('NOT (SPO OR SPT)')
+  # parsed = parser.assignment.parse('PSV63 := NOT (SPO OR SPT)')
+  # parsed = parser.command.parse('PROTSEL1  # <<<<<<< LINE INTENTIONALLY LEFT BLANK >>>>>>>')
+  # parsed = parser.command.parse('PROTSEL2 PSV01 := BFTRIP1')
+  # parsed = parser.command_detail.parse('PSV01 := BFTRIP1')
+  # parsed = parser.command.parse('PROTSEL2  PSV01 := BFTRIP1 OR BFTRIP2 OR PCT15Q OR PCT14Q OR ASV042 OR M4PT OR 51S1T OR 51S2T OR IN303 OR IN304 #GENERAL TRIP, KEY 3 PH NON-RECLOSEABLE DTT. PCT14Q/PCT15Q ARE O/V PTN,  ASV042 IS OPEN POLE PTN, 51S1T AND 51S2T ARE CH. INDEP. GND O/C, M4PT IS TIME DELAYED CH. INDEP. PTN, IN303 IS 5RX4 PN, IN304 IS 5RX4 ISOL.')
+  # parsed = parser.command.parse('OUT301  TPA1 OR ASV051 OR RTA1 OR PCT01Q OR PLT09 # TRIP 5CB4 PHASE A')
+  # parsed = parser.command.parse('TMB1A IN308 AND PSV53 OR RB01 #PT KEY OUT. KEY INCLUDES ALL TERM OF TRCOMM EQ. 3PT IS 3 PHASE TRIP, 67 Q2 FOR ADDITIONAL KEY SENSITIVITY')
+  # parsed = parser.command.parse('PROTSEL5  PSV63 := NOT (SPO OR SPT)')
 
 begin
   parsed = parser.parse text
@@ -161,3 +187,5 @@ rescue Parslet::ParseFailed => error
   puts error.cause.ascii_tree
 end
 pp parsed
+
+# make_svg('testimg.svg')
