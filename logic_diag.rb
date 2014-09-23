@@ -126,11 +126,11 @@ class LogicGrammar < Parslet::Parser
   }
 
   rule(:assignment) {
-    identifier.as(:assignee) >>
+    identifier >>
     ws.repeat >>
     str(':=') >>
     ws.repeat >>
-    expr.as(:value)
+    expr.as(:val)
   }
 
   rule(:command_detail) {
@@ -138,9 +138,9 @@ class LogicGrammar < Parslet::Parser
   }
 
   rule(:command) { 
-    identifier.as(:id) >> 
+    identifier >> 
     ws.repeat(1) >>
-    command_detail.maybe >>
+    command_detail.maybe.as(:val) >>
     comment.maybe
   }
 
@@ -186,6 +186,8 @@ begin
 rescue Parslet::ParseFailed => error
   puts error.cause.ascii_tree
 end
-pp parsed
+# pp parsed
+
+
 
 # make_svg('testimg.svg')
