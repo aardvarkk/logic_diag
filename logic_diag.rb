@@ -45,17 +45,23 @@ def make_svg(filename)
   end
 end
 
-# class TestGrammar < Parslet::Parser
-#   rule(:newline) {
-#     match('\n')
-#   }
-#   rule(:foo) {
-#     str('foo') >> newline
-#   }
-#   root(:foo)
-# end
-
-# pp TestGrammar.new.parse text
+def create_vartable(parsed)
+  vartable = []
+  def get_vars(obj)
+    return [] if obj.nil? || !obj.is_a?(Hash)
+    vartable = []
+    # Grab ourselves if we have a var at our level
+    vartable << obj[:var].to_s if obj.key?(:var)
+    # Go into our children if we have any
+    obj.each { |k,v| vartable += get_vars v }
+    vartable
+  end
+  parsed.each do |h|
+    vartable += get_vars h
+  end
+  vartable.uniq!
+  vartable.sort! unless vartable.nil?
+end
 
 # Parslet
 class LogicGrammar < Parslet::Parser
@@ -68,8 +74,12 @@ class LogicGrammar < Parslet::Parser
     match('\n') 
   }
   
+  rule(:alphanum) {
+    match('[a-zA-Z0-9]').repeat(1)
+  }
+
   rule(:identifier) {
-    match('[a-zA-Z0-9]').repeat(1).as(:var)
+    alphanum.as(:var)
   }
   
   rule(:comment) { 
@@ -182,28 +192,124 @@ parser = LogicGrammar.new
   # parsed = parser.command.parse('PROTSEL5  PSV63 := NOT (SPO OR SPT)')
 
 begin
-  parsed = parser.parse text
+  forest = parser.parse text
 rescue Parslet::ParseFailed => error
   puts error.cause.ascii_tree
 end
-# pp parsed
+# pp forest
 
 # Create a variable table
-vartable = []
-def get_vars(obj)
-  return [] if obj.nil? || !obj.is_a?(Hash)
-  vartable = []
-  # Grab ourselves if we have a var at our level
-  vartable << obj[:var].to_s if obj.key?(:var)
-  # Go into our children if we have any
-  obj.each { |k,v| vartable += get_vars v }
-  vartable
-end
-parsed.each do |h|
-  vartable += get_vars h
-end
-vartable.uniq!.sort!
-pp vartable
+vartable = create_vartable forest
+# pp vartable
 
+# Create a variable table per-tree (to potentially find overlap)
+# forest.each { |t| pp create_vartable [t] }
+
+# To be a leaf node, we must have only one key-pair value of :var => "varname"
+def find_leaf_var(tree, var)
+  return nil if !tree.is_a?(Hash)
+
+  # Try our children first...
+  tree.each do |k,v|
+    leaf_instance = find_leaf_var(v, var)
+    return leaf_instance if leaf_instance
+  end
+
+  # Now examine ourselves...
+  if tree.key?(:var) && tree[:var] == var && tree.keys.count == 1
+    return tree
+  else
+    return nil
+  end
+end
+
+# To be a parent node, we must have one key-pair value of :var => "varname" as well as additional keys
+def find_parent_var(tree, var)
+  return nil if !tree.is_a?(Hash)
+
+  # Try our children first...
+  tree.each do |k,v|
+    parent_instance = find_parent_var(v, var)
+    return parent_instance if parent_instance
+  end
+
+  # Now examine ourselves...
+  if tree.key?(:var) && tree[:var] == var && tree[:val].is_a?(Hash)
+    return tree
+  else
+    return nil
+  end
+end
+
+# To be settled, the forest must NOT contain a matching pair such that one is a leaf node and the other has children
+def settled(forest, vartable)
+  # Go through each variable in the vartable and see if we're able to find it both in a leaf and in a place that has children
+  vartable.each do |v|
+    # pp v
+
+    # Go through every tree in the forest to see if we find a matching pair
+    leaf_instance = nil
+    parent_instance = nil    
+    forest.each do |t|
+      leaf_instance   ||= find_leaf_var(t, v)
+      parent_instance ||= find_parent_var(t, v)
+      return {leaf: leaf_instance, parent: parent_instance} if leaf_instance && parent_instance
+    end
+  end
+
+  return nil
+end
+
+# def remove_subtree(tree, to_remove)
+#   return if !tree.is_a?(Hash)
+  
+#   # Remove from our children first
+#   tree.each { |k,v| remove_subtree(v, to_remove) }
+
+#   # If our value matches the thing to remove, do it
+#   if tree.has_key?(:val) && tree[:val] == to_remove
+#     tree[:val] = to_remove[:var]
+#   end
+# end
+
+def replace_leaf_with_subtree(tree, leaf, subtree)
+  return if !tree.is_a?(Hash)
+
+  # Work on our children
+  tree.each { |k,v| replace_leaf_with_subtree(v, leaf, subtree) }
+
+  # Work on ourselves
+  if tree == leaf
+    tree.replace subtree
+  end
+end
+
+while lp = settled(forest, vartable)
+  
+  # puts "--- FOREST BEFORE"
+  # pp forest
+
+  # puts "--- LEAF"
+  # pp lp[:leaf]
+  # puts "--- PARENT"
+  # pp lp[:parent]
+
+  # First, get rid of the parent entry from the original trees (delete it)
+  # This works because we have a copy
+  # forest.each do |t|
+  #   remove_subtree(t, lp[:parent])
+  # end
+
+  # Then, replace all leaf entries of this variable with parent entries of this variable
+  forest.each do |t|
+    replace_leaf_with_subtree(t, lp[:leaf], lp[:parent])
+  end
+
+  # puts "--- FOREST AFTER"
+  # pp forest
+
+end
+
+pp forest
 
 # make_svg('testimg.svg')
