@@ -190,12 +190,20 @@ end
 
 # Create a variable table
 vartable = []
-def get_vars(hash)
-
+def get_vars(obj)
+  return [] if obj.nil? || !obj.is_a?(Hash)
+  vartable = []
+  # Grab ourselves if we have a var at our level
+  vartable << obj[:var].to_s if obj.key?(:var)
+  # Go into our children if we have any
+  obj.each { |k,v| vartable += get_vars v }
+  vartable
 end
 parsed.each do |h|
-  vartable << get_vars(h)
+  vartable += get_vars h
 end
+vartable.uniq!.sort!
+pp vartable
 
 
 # make_svg('testimg.svg')
