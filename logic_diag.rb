@@ -188,6 +188,14 @@ rescue Parslet::ParseFailed => error
 end
 # pp parsed
 
+# Create a variable table
+vartable = []
+def get_vars(hash)
+
+end
+parsed.each do |h|
+  vartable << get_vars(h)
+end
 
 
 # make_svg('testimg.svg')
