@@ -1,0 +1,2 @@
+TEST A := B OR C
+TEST D := A OR E

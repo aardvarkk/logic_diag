@@ -33,18 +33,6 @@ def or_gate(x1,y1,y2,x2)
   %{<line x1="#{x1}" x2="#{x1}" y1="#{y1-d}" y2="#{y2+d}" stroke="black"/>}
 end
 
-def make_svg(filename)
-  # Calculate total required dimensions before making the SVG
-  w = 500
-  h = 500
-  File.open(filename, 'w') do |f|
-    f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
-    f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
-    f.puts or_gate(50,50,100,100)
-    f.puts %{</svg>}
-  end
-end
-
 def create_vartable(parsed)
   vartable = []
   def get_vars(obj)
@@ -155,7 +143,7 @@ class LogicGrammar < Parslet::Parser
   }
 
   rule(:commandset) { 
-    (command >> newline).repeat
+    (command >> (newline | any.absent?)).repeat
   }
 
   root(:commandset)
@@ -310,6 +298,44 @@ while lp = settled(forest, vartable)
 
 end
 
-pp forest
+# pp forest.last
 
-# make_svg('testimg.svg')
+def get_deepest(t, depth)
+  return depth-1 if !t.is_a?(Hash)
+  deepest_child = depth
+  t.each { |k,v| deepest_child = [deepest_child, get_deepest(v, depth+1)].max }
+  return deepest_child
+end
+
+def draw_node(n, file)
+  return if !n.is_a?(Hash)
+
+  # Leaves of the tree are the inputs, so process children first
+  # Children should be contained within any non-var keys
+  n.each { |k,v| draw_node(v, file) if k != :var }
+
+  # This is a variable
+  if n.key? :var
+    # puts "Var #{n[:var]}"
+  else
+
+  end
+end
+
+def draw_tree(t, file)
+  puts get_deepest(t, 0)
+  draw_node(t, file)
+end
+
+t = forest.last
+w = 500;
+h = 500;
+File.open('testimg.svg', 'w') do |f|
+  f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
+  f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
+  draw_tree(t, f)
+  f.puts %{</svg>}
+end
+pp t
+
+# pp forest
