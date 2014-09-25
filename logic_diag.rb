@@ -1,37 +1,8 @@
-require 'awesome_print'
-require 'citrus'
 require 'parslet'
 require 'pp'
-require 'treetop'
+require 'tree'
 
 text = File.read('test.txt')
-
-# # NOTE: Text must end in a newline character!
-# Citrus.load 'grammar'
-# parsed = Grammar.parse text
-
-# Citrus 
-# Citrus.load 'calc'
-# parsed = Calc.parse '(-0  + +5) * (3 + (8*7)**9) / 50 + 3'
-# parsed = Calc.parse '5*4*3'
-
-# p parsed.dump
-
-# Treetop
-# Treetop.load 'grammar'
-# parsed = GrammarParser.new.parse text
-# p parsed
-
-# x1 = x coord of top input terminal
-# y1 = y coord of of top input terminal
-# y2 = y coord of bottom input terminal
-# x2 = x coord of output terminal
-# return an SVG string corresponding to an OR gate at the given location
-def or_gate(x1,y1,y2,x2)
-  d = y2 - y1
-  h = 2 * d
-  %{<line x1="#{x1}" x2="#{x1}" y1="#{y1-d}" y2="#{y2+d}" stroke="black"/>}
-end
 
 def create_vartable(parsed)
   vartable = []
@@ -82,7 +53,8 @@ class LogicGrammar < Parslet::Parser
       str('(') >>
       expr >>
       str(')')
-    ).as(:group) |
+    #).as(:group) |
+    ) |
     identifier
   }
 
@@ -300,6 +272,36 @@ end
 
 # pp forest.last
 
+# Create the RubyTree from a parsed hash
+def append_to_tree(hash)
+  # return nil if !hash.is_a?(Hash)
+
+  if hash.key? :var
+    node = Tree::TreeNode.new({:var => hash[:var].to_s})
+    node << append_to_tree(hash[:val]) if hash[:val]
+  elsif hash.key? :or
+    node = Tree::TreeNode.new({:or => hash.object_id.to_s})
+    node << append_to_tree(hash[:or][:left])
+    node << append_to_tree(hash[:or][:right])
+  elsif hash.key? :and
+    node = Tree::TreeNode.new({:and => hash.object_id.to_s})
+    node << append_to_tree(hash[:and][:left])
+    node << append_to_tree(hash[:and][:right])
+  elsif hash.key? :not
+    node = Tree::TreeNode.new({:not => hash.object_id.to_s})
+    node << append_to_tree(hash[:not])
+  else
+    # What kind of node is this?
+    node = Tree::TreeNode.new(hash.object_id.to_s)
+  end
+
+  return node
+end
+tree = append_to_tree(forest.last)
+tree.print_tree
+
+# pp forest.last
+
 def get_deepest(t, depth)
   return depth-1 if !t.is_a?(Hash)
   deepest_child = depth
@@ -323,7 +325,7 @@ def draw_node(n, file)
 end
 
 def draw_tree(t, file)
-  puts get_deepest(t, 0)
+  # puts get_deepest(t, 0)
   draw_node(t, file)
 end
 
@@ -336,6 +338,6 @@ File.open('testimg.svg', 'w') do |f|
   draw_tree(t, f)
   f.puts %{</svg>}
 end
-pp t
+# pp t
 
 # pp forest
