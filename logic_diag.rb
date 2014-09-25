@@ -273,32 +273,57 @@ end
 # pp forest.last
 
 # Create the RubyTree from a parsed hash
-def append_to_tree(hash)
+def append_to_tree(hash, idx)
   # return nil if !hash.is_a?(Hash)
 
   if hash.key? :var
-    node = Tree::TreeNode.new({:var => hash[:var].to_s})
-    node << append_to_tree(hash[:val]) if hash[:val]
+    node = Tree::TreeNode.new(idx.to_s, hash[:var].to_s)
+    idx += 1
+    node << append_to_tree(hash[:val], idx) if hash[:val]
   elsif hash.key? :or
-    node = Tree::TreeNode.new({:or => hash.object_id.to_s})
-    node << append_to_tree(hash[:or][:left])
-    node << append_to_tree(hash[:or][:right])
+    node = Tree::TreeNode.new(idx.to_s, "OR")
+    idx += 1
+    node << append_to_tree(hash[:or][:left], idx)
+    idx += node.size - 1
+    node << append_to_tree(hash[:or][:right], idx)
   elsif hash.key? :and
-    node = Tree::TreeNode.new({:and => hash.object_id.to_s})
-    node << append_to_tree(hash[:and][:left])
-    node << append_to_tree(hash[:and][:right])
+    node = Tree::TreeNode.new(idx.to_s, "AND")
+    idx += 1
+    node << append_to_tree(hash[:and][:left], idx)
+    idx += node.size - 1
+    node << append_to_tree(hash[:and][:right], idx)
   elsif hash.key? :not
-    node = Tree::TreeNode.new({:not => hash.object_id.to_s})
-    node << append_to_tree(hash[:not])
+    node = Tree::TreeNode.new(idx.to_s, "NOT")
+    idx += 1
+    node << append_to_tree(hash[:not], idx)
   else
-    # What kind of node is this?
-    node = Tree::TreeNode.new(hash.object_id.to_s)
+    throw "Shouldn't be here..."
   end
 
   return node
 end
-tree = append_to_tree(forest.last)
-tree.print_tree
+tree = append_to_tree(forest[-1], 0)
+
+# To get this method to work, change RubyTree like this:
+# def print_tree(level = 0, to_print = [:name])
+#   if is_root?
+#     print "*"
+#   else
+#     #print "|" unless parent.is_last_sibling?
+#     print(' ' * (level - 1) * 4)
+#     print(is_last_sibling? ? "+" : "|")
+#     print "---"
+#     print(has_children? ? "+" : ">")
+#   end
+
+#   str = ""
+#   str += " #{name}" if to_print.include? :name
+#   str += " #{content}" if to_print.include? :content
+#   puts str
+
+#   children { |child| child.print_tree(level + 1, to_print) if child } # Child might be 'nil'
+# end
+tree.print_tree(0, [:content])
 
 # pp forest.last
 
