@@ -6,6 +6,8 @@ require 'tree'
 # This makes the whole block 96px
 $szx = 8 * 16
 $szy = 6 * 16
+$dims = {x: 0, y: 0}
+$treestr = ""
 
 text = File.read('test.txt')
 
@@ -152,19 +154,19 @@ def append_to_tree(hash, idx)
     idx += 1
     node << append_to_tree(hash[:val], idx) if hash[:val]
   elsif hash.key? :or
-    node = Tree::TreeNode.new(idx.to_s, "OR")
+    node = Tree::TreeNode.new(idx.to_s, :or)
     idx += 1
     node << append_to_tree(hash[:or][:left], idx)
     idx += node.size - 1
     node << append_to_tree(hash[:or][:right], idx)
   elsif hash.key? :and
-    node = Tree::TreeNode.new(idx.to_s, "AND")
+    node = Tree::TreeNode.new(idx.to_s, :and)
     idx += 1
     node << append_to_tree(hash[:and][:left], idx)
     idx += node.size - 1
     node << append_to_tree(hash[:and][:right], idx)
   elsif hash.key? :not
-    node = Tree::TreeNode.new(idx.to_s, "NOT")
+    node = Tree::TreeNode.new(idx.to_s, :not)
     idx += 1
     node << append_to_tree(hash[:not], idx)
   else
@@ -217,92 +219,143 @@ tree.print_tree(0, [:content])
 
 # n = node
 # f = file
-def draw_node(n, colcounts, f)
+def draw_node(n, dangling)
 
-  puts n.content
-  puts n.node_height
+  p n.content
+  p dangling
+  
+  # First iteration
+  if dangling.empty?
+    d = { x: 0, y: 0 }
+  else
+    # Start at our last dangling block
+    d = dangling.last.dup
 
-  col = n.root.node_height - n.node_depth
+    # Can't push a gate onto anything -- have to move forward a column
+    cur_gate = n.content == :and || n.content == :or || n.content == :not
 
-  # p colcounts
-  # p col
-  d = { x: col * $szx, y: colcounts[col] * $szy }
+    # Stack vars but don't stack gates
+    if cur_gate
+      d[:x] += $szx
+    # Here we're a var type...
+    else
+      # If we have no children, we only stack...
+      if n.children.count == 0
+        d[:y] += $szy
+      # If we do have children, we're just naming what's before us
+      else
+        d[:x] += $szx
+      end
+    end
 
-  # DEBUG -- draw block surround
-  f.puts %{<rect x="#{d[:x]}" y="#{d[:y]}" width="#{$szx}" height="#{$szy}" stroke="black" fill="transparent"/>}
+  end
 
   # VAR or NOT
   if n.children.count < 2
     
-    if n.content == "NOT"
+    if n.content == :not
+
+      d[:type] = :not
 
       # Lead-in line
-      f.puts %{<line x1="#{d[:x]+$szx*1/8}" y1="#{d[:y]+$szy/2}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/8}" y1="#{d[:y]+$szy/2}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
 
       # Not gate is three lines and a circle...
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*5/8}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx*5/8}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
-      f.puts %{<circle cx="#{d[:x]+$szx*11/16}" cy="#{d[:y]+$szy/2}" r="#{$szx*1/16}" fill="transparent" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*5/8}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx*5/8}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
+      $treestr += %{<circle cx="#{d[:x]+$szx*11/16}" cy="#{d[:y]+$szy/2}" r="#{$szx*1/16}" fill="none" stroke="black"/>}
+
+      # Connect to single previous
+      p = dangling.pop
+      $treestr += %{<line x1="#{d[:x]+$szx*1/8}" y1="#{d[:y]+$szy/2}" x2="#{p[:x]+$szx}" y2="#{p[:y]+$szy/2}" stroke="black"/>}
 
     # VAR
     else
 
+      d[:type] = :var
+
       # Text
-      f.puts %{<text text-anchor="middle" x="#{d[:x]+$szx/2}" y="#{d[:y]+$szy/2}">#{n.content}</text>}
+      $treestr += %{<text text-anchor="middle" x="#{d[:x]+$szx/2}" y="#{d[:y]+$szy/2}">#{n.content}</text>}
       
+      # If we have children, we're just naming what's before us so we should connect to it
+      if n.children.count > 0
+        p = dangling.pop
+        $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy/2}" x2="#{p[:x]+$szx}" y2="#{p[:y]+$szy/2}" stroke="black"/>}
+      end
+
     end
     
   # AND or OR
   else
 
-    if n.content == "AND"
+    # Set Y position to top-most connection
+    c2 = dangling.pop
+    c1 = dangling.pop
+    d[:y] = c1[:y]
+
+    if n.content == :and
+
+      d[:type] = :and
 
       # Lead-in lines
-      f.puts %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy/3}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy/3}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy*2/3}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*2/3}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy/3}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy/3}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy*2/3}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*2/3}" stroke="black"/>}
 
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*1/6}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
-      f.puts %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*1/6} A#{$szx/4},#{$szy/3} 0 0,1 #{d[:x]+$szx/2},#{d[:y]+$szy*5/6}" fill="transparent" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx*1/4}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*1/6}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
+      $treestr += %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*1/6} A#{$szx/4},#{$szy/3} 0 0,1 #{d[:x]+$szx/2},#{d[:y]+$szy*5/6}" fill="none" stroke="black"/>}
 
     else
 
-      f.puts %{<path d="M#{d[:x]+$szx*1/4},#{d[:y]+$szy*1/6} A#{$szx/8},#{$szy/3} 0 0,1 #{d[:x]+$szx*1/4},#{d[:y]+$szy*5/6}" fill="transparent" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*1/6}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
-      f.puts %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*1/6} A#{$szx/2},#{$szy/2} 0 0,1 #{d[:x]+$szx*3/4},#{d[:y]+$szy/2}" fill="transparent" stroke="black"/>}
-      f.puts %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*5/6} A#{$szx/2},#{$szy/2} 0 0,0 #{d[:x]+$szx*3/4},#{d[:y]+$szy/2}" fill="transparent" stroke="black"/>}
+      d[:type] = :or
 
       # LONGER lead-in lines for OR
-      f.puts %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy/3}" x2="#{d[:x]+$szx/2.8}" y2="#{d[:y]+$szy/3}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy*2/3}" x2="#{d[:x]+$szx/2.8}" y2="#{d[:y]+$szy*2/3}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy/3}" x2="#{d[:x]+$szx/2.8}" y2="#{d[:y]+$szy/3}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx/8}" y1="#{d[:y]+$szy*2/3}" x2="#{d[:x]+$szx/2.8}" y2="#{d[:y]+$szy*2/3}" stroke="black"/>}
+
+      $treestr += %{<path d="M#{d[:x]+$szx*1/4},#{d[:y]+$szy*1/6} A#{$szx/8},#{$szy/3} 0 0,1 #{d[:x]+$szx*1/4},#{d[:y]+$szy*5/6}" fill="none" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*1/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*1/6}" stroke="black"/>}
+      $treestr += %{<line x1="#{d[:x]+$szx*1/4}" y1="#{d[:y]+$szy*5/6}" x2="#{d[:x]+$szx/2}" y2="#{d[:y]+$szy*5/6}" stroke="black"/>}
+      $treestr += %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*1/6} A#{$szx/2},#{$szy/2} 0 0,1 #{d[:x]+$szx*3/4},#{d[:y]+$szy/2}" fill="none" stroke="black"/>}
+      $treestr += %{<path d="M#{d[:x]+$szx/2},#{d[:y]+$szy*5/6} A#{$szx/2},#{$szy/2} 0 0,0 #{d[:x]+$szx*3/4},#{d[:y]+$szy/2}" fill="none" stroke="black"/>}
 
     end
+
+    # Connect to two previous
+    $treestr += %{<line x1="#{d[:x]+$szx*1/8}" y1="#{d[:y]+$szy/3}" x2="#{c1[:x]+$szx}" y2="#{c1[:y]+$szy/2}" stroke="black"/>}
+    $treestr += %{<line x1="#{d[:x]+$szx*1/8}" y1="#{d[:y]+$szy*2/3}" x2="#{c2[:x]+$szx}" y2="#{c2[:y]+$szy/2}" stroke="black"/>}
 
   end
 
   # Follow-on line
-  f.puts %{<line x1="#{d[:x]+$szx*3/4}" y1="#{d[:y]+$szy/2}" x2="#{d[:x]+$szx}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
+  $treestr += %{<line x1="#{d[:x]+$szx*3/4}" y1="#{d[:y]+$szy/2}" x2="#{d[:x]+$szx}" y2="#{d[:y]+$szy/2}" stroke="black"/>}
 
-  colcounts[col] += 1
+  # DEBUG -- draw block surround
+  # $treestr += %{<rect x="#{d[:x]}" y="#{d[:y]}" width="#{$szx}" height="#{$szy}" stroke="black" fill="none"/>}
 
-  # Connect to the previous node (stack-based)
-  
+  # Help calculate our overall dimensions
+  $dims[:x] = [$dims[:x], d[:x]+$szx].max
+  $dims[:y] = [$dims[:y], d[:y]+$szy].max
+
+  # Mark this as dangling for the next node
+  dangling.push d
+
 end
 
-def draw_tree(t, file)
-  colcounts = Array.new(t.node_height+1){0}
-  t.postordered_each { |n| draw_node(n, colcounts, file) }
+def draw_tree(t)
+  dangling = []
+  t.postordered_each { |n| dangling = draw_node(n, dangling) }
 end
 
-w = (tree.node_height+1) * $szy;
-h = 600;
+# Create the tree string
+draw_tree(tree)
+
 File.open('testimg.svg', 'w') do |f|
-  f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
-  f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
-  draw_tree(tree, f)
+  f.puts %{<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg" width="#{$dims[:x]}" height="#{$dims[:y]}">}
+  f.puts %{<rect x="0" y="0" width="100%" height="100%" fill="white"/>}
+  f.puts $treestr
   f.puts %{</svg>}
 end
 # pp t
