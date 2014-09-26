@@ -210,33 +210,74 @@ tree = reorder_tree(tree)
 
 tree.print_tree(0, [:content])
 
-def draw_node(n, file)
-  return if !n.is_a?(Hash)
+# n = node
+# f = file
+def draw_node(n, drawstates, f)
+  # Split blocks into 6x6 subsections of some number of pixels (16 for now)
+  # This makes the whole block 96px
+  block_size = 6 * 16
 
-  # Leaves of the tree are the inputs, so process children first
-  # Children should be contained within any non-var keys
-  n.each { |k,v| draw_node(v, file) if k != :var }
+  # DEBUG -- draw block surround
+  # f.puts %{<rect x="#{d[:x]}" y="#{d[:y]}" width="#{block_size}" height="#{block_size}" stroke="black" fill="transparent"/>}
 
-  # This is a variable
-  if n.key? :var
-    # puts "Var #{n[:var]}"
+
+  # We know at this point where the previous one ENDED...
+  # That's what d represents
+
+  d = drawstates[-1]
+
+  # VAR or NOT
+  if n.children.count < 2
+    
+    # Here, we expect only one variable on the stack...
+    d = drawstates.pop
+
+    # Lead-in line
+    f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+block_size/2}" x2="#{d[:x]+block_size*1/6}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
+
+    # NOT
+    # This will tack onto wherever we previously ended, so no worries here...
+    if n.content == "NOT"
+
+      # Not gate is three lines and a circle...
+      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*1/6}" x2="#{d[:x]+block_size*1/6}" y2="#{d[:y]+block_size*5/6}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*1/6}" x2="#{d[:x]+block_size*2/3}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*5/6}" x2="#{d[:x]+block_size*2/3}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
+      f.puts %{<circle cx="#{d[:x]+block_size*9/12}" cy="#{d[:y]+block_size/2}" r="#{block_size*1/12}" stroke="black" fill="transparent"/>}
+
+    # VAR
+    else
+
+      # Text
+      f.puts %{<text text-anchor="middle" x="#{d[:x]+block_size/2}" y="#{d[:y]+block_size/2}">#{n.content}</text>}
+      
+    end
+    
+    # Follow-on line
+    f.puts %{<line x1="#{d[:x]+block_size*5/6}" y1="#{d[:y]+block_size/2}" x2="#{d[:x]+block_size}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
+
+  # AND or OR
   else
 
   end
+
+  # Mark where we ended...
+  drawstates.push({ x: d[:x]+block_size, y: d[:y] })
+
 end
 
 def draw_tree(t, file)
-  # puts get_deepest(t, 0)
-  draw_node(t, file)
+  # Drawstate x and y should always point to top left corner of relevant block
+  drawstates = [{ x: 0, y: 0 }]
+  t.postordered_each { |n| draw_node(n, drawstates, file) }
 end
 
-t = forest.last
 w = 500;
 h = 500;
 File.open('testimg.svg', 'w') do |f|
   f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
   f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
-  draw_tree(t, f)
+  draw_tree(tree, f)
   f.puts %{</svg>}
 end
 # pp t
