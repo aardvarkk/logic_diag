@@ -175,7 +175,7 @@ def append_to_tree(hash, idx)
 
   return node
 end
-tree = append_to_tree(forest[1], 0)
+tree = append_to_tree(forest[2], 0)
 
 # To get this method to work, change RubyTree like this:
 # def print_tree(level = 0, to_print = [:name])
@@ -352,7 +352,7 @@ end
 # Create the tree string
 draw_tree(tree)
 
-File.open('testimg.svg', 'w') do |f|
+File.open('logic_diag.svg', 'w') do |f|
   f.puts %{<svg version="1.1" baseProfile="full" xmlns="http://www.w3.org/2000/svg" width="#{$dims[:x]}" height="#{$dims[:y]}">}
   f.puts %{<rect x="0" y="0" width="100%" height="100%" fill="white"/>}
   f.puts $treestr
