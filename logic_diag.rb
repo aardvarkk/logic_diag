@@ -2,6 +2,10 @@ require 'parslet'
 require 'pp'
 require 'tree'
 
+# Split blocks into 6x6 subsections of some number of pixels (16 for now)
+# This makes the whole block 96px
+$sz = 6 * 16
+
 text = File.read('test.txt')
 
 class LogicGrammar < Parslet::Parser
@@ -212,68 +216,82 @@ tree.print_tree(0, [:content])
 
 # n = node
 # f = file
-def draw_node(n, drawstates, f)
-  # Split blocks into 6x6 subsections of some number of pixels (16 for now)
-  # This makes the whole block 96px
-  block_size = 6 * 16
+def draw_node(n, colcounts, f)
 
   # DEBUG -- draw block surround
-  # f.puts %{<rect x="#{d[:x]}" y="#{d[:y]}" width="#{block_size}" height="#{block_size}" stroke="black" fill="transparent"/>}
+  # f.puts %{<rect x="#{d[:x]}" y="#{d[:y]}" width="#{$sz}" height="#{$sz}" stroke="black" fill="transparent"/>}
 
-
-  # We know at this point where the previous one ENDED...
-  # That's what d represents
-
-  d = drawstates[-1]
+  col = n.node_height
+  # p colcounts
+  # p col
+  d = { x: col * $sz, y: colcounts[col] * $sz }
 
   # VAR or NOT
   if n.children.count < 2
     
-    # Here, we expect only one variable on the stack...
-    d = drawstates.pop
-
     # Lead-in line
-    f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+block_size/2}" x2="#{d[:x]+block_size*1/6}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
+    f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+$sz/2}" x2="#{d[:x]+$sz*1/6}" y2="#{d[:y]+$sz/2}" stroke="black"/>}
 
-    # NOT
-    # This will tack onto wherever we previously ended, so no worries here...
     if n.content == "NOT"
 
       # Not gate is three lines and a circle...
-      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*1/6}" x2="#{d[:x]+block_size*1/6}" y2="#{d[:y]+block_size*5/6}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*1/6}" x2="#{d[:x]+block_size*2/3}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
-      f.puts %{<line x1="#{d[:x]+block_size*1/6}" y1="#{d[:y]+block_size*5/6}" x2="#{d[:x]+block_size*2/3}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
-      f.puts %{<circle cx="#{d[:x]+block_size*9/12}" cy="#{d[:y]+block_size/2}" r="#{block_size*1/12}" stroke="black" fill="transparent"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*1/6}" x2="#{d[:x]+$sz*1/6}" y2="#{d[:y]+$sz*5/6}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*1/6}" x2="#{d[:x]+$sz*2/3}" y2="#{d[:y]+$sz/2}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*5/6}" x2="#{d[:x]+$sz*2/3}" y2="#{d[:y]+$sz/2}" stroke="black"/>}
+      f.puts %{<circle cx="#{d[:x]+$sz*9/12}" cy="#{d[:y]+$sz/2}" r="#{$sz*1/12}" fill="transparent" stroke="black"/>}
 
     # VAR
     else
 
       # Text
-      f.puts %{<text text-anchor="middle" x="#{d[:x]+block_size/2}" y="#{d[:y]+block_size/2}">#{n.content}</text>}
+      f.puts %{<text text-anchor="middle" x="#{d[:x]+$sz/2}" y="#{d[:y]+$sz/2}">#{n.content}</text>}
       
     end
     
-    # Follow-on line
-    f.puts %{<line x1="#{d[:x]+block_size*5/6}" y1="#{d[:y]+block_size/2}" x2="#{d[:x]+block_size}" y2="#{d[:y]+block_size/2}" stroke="black"/>}
-
   # AND or OR
   else
 
+    if n.content == "AND"
+
+      # Lead-in lines
+      f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+$sz/3}" x2="#{d[:x]+$sz*1/6}" y2="#{d[:y]+$sz/3}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+$sz*2/3}" x2="#{d[:x]+$sz*1/6}" y2="#{d[:y]+$sz*2/3}" stroke="black"/>}
+
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*1/6}" x2="#{d[:x]+$sz*1/6}" y2="#{d[:y]+$sz*5/6}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*1/6}" x2="#{d[:x]+$sz/2}" y2="#{d[:y]+$sz*1/6}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*5/6}" x2="#{d[:x]+$sz/2}" y2="#{d[:y]+$sz*5/6}" stroke="black"/>}
+      f.puts %{<path d="M#{d[:x]+$sz/2},#{d[:y]+$sz*1/6} A#{$sz/3},#{$sz/3} 0 0,1 #{d[:x]+$sz/2},#{d[:y]+$sz*5/6}" fill="transparent" stroke="black"/>}
+
+    else
+
+      f.puts %{<path d="M#{d[:x]+$sz*1/6},#{d[:y]+$sz*1/6} A#{$sz/6},#{$sz/3} 0 0,1 #{d[:x]+$sz*1/6},#{d[:y]+$sz*5/6}" fill="transparent" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*1/6}" x2="#{d[:x]+$sz/2}" y2="#{d[:y]+$sz*1/6}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]+$sz*1/6}" y1="#{d[:y]+$sz*5/6}" x2="#{d[:x]+$sz/2}" y2="#{d[:y]+$sz*5/6}" stroke="black"/>}
+      f.puts %{<path d="M#{d[:x]+$sz/2},#{d[:y]+$sz*1/6} A#{$sz/2},#{$sz/2} 0 0,1 #{d[:x]+$sz*5/6},#{d[:y]+$sz/2}" fill="transparent" stroke="black"/>}
+      f.puts %{<path d="M#{d[:x]+$sz/2},#{d[:y]+$sz*5/6} A#{$sz/2},#{$sz/2} 0 0,0 #{d[:x]+$sz*5/6},#{d[:y]+$sz/2}" fill="transparent" stroke="black"/>}
+
+      # LONGER lead-in lines for OR
+      f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+$sz/3}" x2="#{d[:x]+$sz/3.2}" y2="#{d[:y]+$sz/3}" stroke="black"/>}
+      f.puts %{<line x1="#{d[:x]}" y1="#{d[:y]+$sz*2/3}" x2="#{d[:x]+$sz/3.2}" y2="#{d[:y]+$sz*2/3}" stroke="black"/>}
+
+    end
+
   end
 
-  # Mark where we ended...
-  drawstates.push({ x: d[:x]+block_size, y: d[:y] })
+  # Follow-on line
+  f.puts %{<line x1="#{d[:x]+$sz*5/6}" y1="#{d[:y]+$sz/2}" x2="#{d[:x]+$sz}" y2="#{d[:y]+$sz/2}" stroke="black"/>}
+
+  colcounts[col] += 1
 
 end
 
 def draw_tree(t, file)
-  # Drawstate x and y should always point to top left corner of relevant block
-  drawstates = [{ x: 0, y: 0 }]
-  t.postordered_each { |n| draw_node(n, drawstates, file) }
+  colcounts = Array.new(t.node_height+1){0}
+  t.postordered_each { |n| draw_node(n, colcounts, file) }
 end
 
-w = 500;
-h = 500;
+w = (tree.node_height+1) * $sz;
+h = 800;
 File.open('testimg.svg', 'w') do |f|
   f.puts %{<svg version="1.1" baseProfile="full" width="#{w}" height="#{h}" xmlns="http://www.w3.org/2000/svg">}
   f.puts %{<rect x="0" y="0" width="#{w}" height="#{h}" fill="white"/>}
