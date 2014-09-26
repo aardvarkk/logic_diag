@@ -175,7 +175,7 @@ def append_to_tree(hash, idx)
 
   return node
 end
-tree = append_to_tree(forest[2], 0)
+tree = append_to_tree(forest[1], 0)
 
 # To get this method to work, change RubyTree like this:
 # def print_tree(level = 0, to_print = [:name])
